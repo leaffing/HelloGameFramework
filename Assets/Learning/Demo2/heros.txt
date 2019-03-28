@@ -1,0 +1,5 @@
+#	test		
+#	int	string	int
+#	id	name	hp
+	1	player	100
+	2	enemy	80
