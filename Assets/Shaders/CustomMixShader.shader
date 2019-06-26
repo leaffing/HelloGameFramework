@@ -25,6 +25,9 @@
 			float3 _MainLeftBottomPos;
 			float3 _MainLeftLeftTopPos;
 			float3 _MainLeftRightBottomPos;
+			float3 _MainCameraWorldPos;
+			float _TexturePixelWidth;
+			float _TexturePixelHeight;
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
@@ -33,6 +36,7 @@
 			{
 				float4 vertex : POSITION;
 				float2 uv : TEXCOORD0;
+				float3 normal : NORMAL;
 			};
 
 			struct v2f
@@ -40,6 +44,7 @@
 				float2 uv : TEXCOORD0;
 				float4 vertex : SV_POSITION;
 				float4 worldPos : TEXCOORD1;
+				float3 worldnormal : TEXCOORD5;
 			};
 
 			//是否在投射之外
@@ -68,12 +73,40 @@
 			inline half IsCull(fixed4 NDCPos)
 			{
 				//从[-1,1]转换到[0,1]
-				float3 uvpos = NDCPos * 0.5 + 0.5;
-				float depth = DecodeFloatRGBA(tex2D(_MainLightDepthTexture, uvpos.xy));
+				//float3 uvpos = NDCPos * 0.5 + 0.5;
+				float depth = DecodeFloatRGBA(tex2D(_MainLightDepthTexture, NDCPos.xy));
 				//float depth = tex2D(_MainLightDepthTexture, uvpos.xy).x;
-				half result = step(depth, NDCPos.z);
-				//half result = step(NDCPos.z, depth);
+				half result = 1- step(depth, NDCPos.z);
+				//half result = 1 - step(NDCPos.z, depth);
+
 				return result;
+			}
+
+			inline fixed PCF(sampler2D _CameraDepthTexture, float3 pos, float _Bias, float currentDepth)
+			{
+				half shadow;
+				half2 texelSize = half2(1.0 / _TexturePixelWidth, 1.0 / _TexturePixelHeight);
+				for (int x = -1; x <= 1; x++) {
+					for (int y = -1; y <= 1; y++) {
+						half2 samplePos = pos.xy + half2(x, y) * texelSize;
+						fixed4 pcfDepthRGBA = tex2D(_CameraDepthTexture, samplePos);
+						fixed pcfDepth = DecodeFloatRGBA(pcfDepthRGBA);
+						shadow += currentDepth + _Bias < pcfDepth ? 1.0 : 0.0;
+					}
+				}
+				shadow /= 9.0;
+				return shadow;
+			}
+
+			inline fixed GetShadowBias(float3 lightDir, float3 normal, fixed maxBias, fixed baseBias)
+			{
+				half cos_val = saturate(dot(lightDir, normal));
+				half sin_val = sqrt(1 - cos_val * cos_val); // sin(acos(L·N))
+				half tan_val = sin_val / cos_val;    // tan(acos(L·N))
+
+				fixed bias = baseBias + clamp(tan_val, 0, maxBias);
+
+				return bias;
 			}
 
 			inline float4 GetCameraProjectPoint(float4x4 CameraProjection, float4 WorldPos) 
@@ -114,7 +147,8 @@
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				
+				fixed3 worldNormal = UnityObjectToWorldNormal(v.normal);
+				o.worldnormal = normalize(worldNormal);
 				//完成MVP中的M（local -> worl）
 				//与该计算功能一致：float4 worldPos = mul(UNITY_MATRIX_M, v.vertex);
 				float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
@@ -134,21 +168,27 @@
 				fixed4 projectPos = mul(_MainLightProjection, i.worldPos);
 				//转成NDC坐标系
 				projectPos = projectPos / projectPos.w;
-
+				float3 uvpos = projectPos * 0.5 + 0.5;
 				//计算投影点是否在投射区域内
 				fixed ismain = step(1, BesideCamera(projectPos));
 				//计算投影点是否被遮挡
-				half iscull = IsCull(projectPos);
+				//half iscull = IsCull(projectPos);
 				//iscull = 0;
-				ismain = step(1, ismain + iscull);
-				
+				//ismain = step(1, ismain + iscull);
+
+				fixed bias = GetShadowBias(normalize(_MainCameraWorldPos), i.worldnormal, 0.0002, 0.0001);
+				fixed shadow = PCF(_MainLightDepthTexture, uvpos, bias, projectPos.z);
+
 				//通过UV获取投射图像对应点颜色
 				float3 videoUV = projectPos;
 				videoUV.y = 1 - videoUV.y;
 				fixed4 cameracolor = tex2D(_ProjectTexture, videoUV.xy);
+				
+				fixed4 insidecolor = fixed4(col*shadow + cameracolor * (1 - shadow));
+				fixed4 finnalycolor = fixed4((1 - ismain)*insidecolor + (ismain)*col);
 
 				fixed4 finalcol =  (1 - ismain) * cameracolor + ismain * col;
-				return fixed4(finalcol.xyz, 1); //是否需要透明处理？
+				return fixed4(finnalycolor.xyz, 1); //是否需要透明处理？
 				//return (1 - ismain) * GetCameraProjectionColor(i.worldPos, _MainCameraProjection) + ismain * col;
 			}
 			ENDCG

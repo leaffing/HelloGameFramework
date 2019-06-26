@@ -244,7 +244,6 @@ MeshRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_Materials:
-  - {fileID: 2100000, guid: d86085f16add0e64f80ade5eb595872d, type: 2}
   - {fileID: 2100000, guid: ca3c2dd30e0c24747b1710fa137ecb70, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
@@ -365,7 +364,7 @@ MonoBehaviour:
   image: {fileID: 0}
   tex: {fileID: 2800000, guid: 77747f61d77527e4e959dc57e7cbab14, type: 3}
   mat: {fileID: 2100000, guid: a8bae88ac8693d948b4b7e73e3c8f683, type: 2}
-  depthTexture: {fileID: 8400000, guid: 270ca930ca0cc3d4da9125effffb4999, type: 2}
+  depthTexture: {fileID: 8400000, guid: e44bfd445a6382f409f6d9a6597f43f1, type: 2}
 --- !u!1 &1019980008
 GameObject:
   m_ObjectHideFlags: 0

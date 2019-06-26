@@ -36,8 +36,8 @@ public class ProjectCamera : MonoBehaviour
         print("当前投射相机宽高比为：" + MainProjectCamera.aspect);
 
         //mainProjectCamera.depthTextureMode = DepthTextureMode.Depth;
-        mainProjectCamera.enabled = false;
-        mainProjectCamera.hideFlags = HideFlags.HideAndDontSave;
+        //mainProjectCamera.enabled = false;
+        //mainProjectCamera.hideFlags = HideFlags.HideAndDontSave;
          
         //mainProjectCamera.CopyFrom(camera);
         //mainProjectCamera.cullingMask=1<<0; // default layer for now
@@ -56,7 +56,7 @@ public class ProjectCamera : MonoBehaviour
     }
 
     // Update is called once per frame
-    void OnPreRender()
+    void Update()
     {
         SetShader();
     }
@@ -73,9 +73,15 @@ public class ProjectCamera : MonoBehaviour
 
         //depthTexture = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
         //MainProjectCamera.targetTexture = depthTexture;
-        MainProjectCamera.RenderWithShader(Shader.Find("Custom/Depth"), "RenderType");
+        MainProjectCamera.backgroundColor = Color.black;
+        MainProjectCamera.clearFlags = CameraClearFlags.Color; ;
+        MainProjectCamera.targetTexture = depthTexture;
+        MainProjectCamera.enabled = false;
+        MainProjectCamera.RenderWithShader(Shader.Find("ShadowMap/DepthTextureShader"), "RenderType");
         //Shader.SetGlobalTexture("_MainLightDepthTexture", depthTexture);
         Shader.SetGlobalTexture("_MainLightDepthTexture", depthTexture);
+        Shader.SetGlobalFloat("_TexturePixelWidth", depthTexture.width);
+        Shader.SetGlobalFloat("_TexturePixelHeight", depthTexture.height);
 
         //完成MVP的V（world -> view）
         Matrix4x4 CameraWorldToView = Camera.main.worldToCameraMatrix;
@@ -89,8 +95,8 @@ public class ProjectCamera : MonoBehaviour
         //RenderTexture.ReleaseTemporary(depthTexture);
     }
 
-    void OnRenderImage(RenderTexture srcTex, RenderTexture dstTex)
-    {
+    //void OnRenderImage(RenderTexture srcTex, RenderTexture dstTex)
+    //{
         //depthTexture = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
         //MainProjectCamera.targetTexture = depthTexture;
         //MainProjectCamera.RenderWithShader(Shader.Find("Custom/Depth"), string.Empty);
@@ -100,7 +106,7 @@ public class ProjectCamera : MonoBehaviour
         //image.texture = dstTex;
         //RenderTexture.ReleaseTemporary(depthTexture);
 
-    }
+    //}
 
     /// <summary>
     /// 利用屏幕中不同直线三点坐标求平面
