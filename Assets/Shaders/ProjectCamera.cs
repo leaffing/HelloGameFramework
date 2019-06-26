@@ -1,10 +1,14 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
-public class ProjectCamera : MonoBehaviour {
+public class ProjectCamera : MonoBehaviour
+{
 
+    public RawImage image;
     public Texture2D tex;
-
+    public Material mat;
     private Camera mainProjectCamera;
+    public RenderTexture depthTexture;
 
     //correction矩阵:一个顶点，经过MVP变化之后，其xyz分量的取值范围是[-1, 1]
     //使用这个变化过的顶点值来找到shadow depth map中对应的点来比较深度，即要作为UV使用，而UV的取值范围是[0, 1]
@@ -31,6 +35,15 @@ public class ProjectCamera : MonoBehaviour {
         MainProjectCamera.aspect = 1;
         print("当前投射相机宽高比为：" + MainProjectCamera.aspect);
 
+        //mainProjectCamera.depthTextureMode = DepthTextureMode.Depth;
+        mainProjectCamera.enabled = false;
+        mainProjectCamera.hideFlags = HideFlags.HideAndDontSave;
+         
+        //mainProjectCamera.CopyFrom(camera);
+        //mainProjectCamera.cullingMask=1<<0; // default layer for now
+        mainProjectCamera.clearFlags = CameraClearFlags.SolidColor;
+        //MainProjectCamera.RenderWithShader(Shader.Find("Custom/Depth"), "RenderType");
+
         Shader.EnableKeyword("MAINCAMERAON");
         Shader.SetGlobalTexture("_MainLightMaps", tex);
         Shader.SetGlobalTexture("_ProjectTexture", tex);
@@ -43,7 +56,7 @@ public class ProjectCamera : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update()
+    void OnPreRender()
     {
         SetShader();
     }
@@ -58,16 +71,37 @@ public class ProjectCamera : MonoBehaviour {
         //将投射矩阵写入shader的全局属性
         Shader.SetGlobalMatrix("_MainLightProjection", m);
 
+        //depthTexture = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
+        //MainProjectCamera.targetTexture = depthTexture;
+        MainProjectCamera.RenderWithShader(Shader.Find("Custom/Depth"), "RenderType");
+        //Shader.SetGlobalTexture("_MainLightDepthTexture", depthTexture);
+        Shader.SetGlobalTexture("_MainLightDepthTexture", depthTexture);
+
         //完成MVP的V（world -> view）
         Matrix4x4 CameraWorldToView = Camera.main.worldToCameraMatrix;
         //完成MVP的P（view -> projection）
         Matrix4x4 CameraProjection = GL.GetGPUProjectionMatrix(Camera.main.projectionMatrix, false);
         Matrix4x4 cm = posToUV * CameraProjection * CameraWorldToView;
         //将投射矩阵写入shader的全局属性
-        Shader.SetGlobalMatrix("_MainCameraProjection", m);
+        //Shader.SetGlobalMatrix("_MainCameraProjection", m);
 
         Shader.SetGlobalVector("_MainCameraWorldPos", MainProjectCamera.transform.position);
+        //RenderTexture.ReleaseTemporary(depthTexture);
     }
+
+    void OnRenderImage(RenderTexture srcTex, RenderTexture dstTex)
+    {
+        //depthTexture = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
+        //MainProjectCamera.targetTexture = depthTexture;
+        //MainProjectCamera.RenderWithShader(Shader.Find("Custom/Depth"), string.Empty);
+
+        //Graphics.Blit(depthTexture, dstTex);
+        //Shader.SetGlobalTexture("_MainLightDepthTexture", dstTex);
+        //image.texture = dstTex;
+        //RenderTexture.ReleaseTemporary(depthTexture);
+
+    }
+
     /// <summary>
     /// 利用屏幕中不同直线三点坐标求平面
     /// </summary>

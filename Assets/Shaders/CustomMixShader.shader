@@ -7,6 +7,7 @@
 	SubShader
 	{
 		Tags{ "RenderType" = "Opaque" }
+		ZWrite On
 		LOD 100
 
 		Pass
@@ -18,6 +19,7 @@
 			#include "UnityCG.cginc"
 
 			sampler2D _ProjectTexture;
+			sampler2D _MainLightDepthTexture;
 			float4x4 _MainLightProjection;
 			float4x4 _MainCameraProjection;
 			float3 _MainLeftBottomPos;
@@ -52,12 +54,25 @@
 				因此在GPU编程中，if else ，switch case等条件语句和太复杂的逻辑是不推荐的.
 				相应的，可以用step（）等函数进行替换，用阶梯函数的思维来构建条件语句。
 				这样，所有的线程都执行完全一样的代码，在很多方面对GPU都是有益的。*/
+				/*在HLSL中， step（a,b) 当b < a时返回0，负责返回1*/
 				result += step(1, pos.x);
 				result += step(pos.x, 0);
 				result += step(1, pos.y);
 				result += step(pos.y, 0);
 				result += step(1, pos.z);
 				result += step(pos.z, 0);
+				return result;
+			}
+
+			//是否被遮挡
+			inline half IsCull(fixed4 NDCPos)
+			{
+				//从[-1,1]转换到[0,1]
+				float3 uvpos = NDCPos * 0.5 + 0.5;
+				float depth = DecodeFloatRGBA(tex2D(_MainLightDepthTexture, uvpos.xy));
+				//float depth = tex2D(_MainLightDepthTexture, uvpos.xy).x;
+				half result = step(depth, NDCPos.z);
+				//half result = step(NDCPos.z, depth);
 				return result;
 			}
 
@@ -122,6 +137,10 @@
 
 				//计算投影点是否在投射区域内
 				fixed ismain = step(1, BesideCamera(projectPos));
+				//计算投影点是否被遮挡
+				half iscull = IsCull(projectPos);
+				//iscull = 0;
+				ismain = step(1, ismain + iscull);
 				
 				//通过UV获取投射图像对应点颜色
 				float3 videoUV = projectPos;
@@ -135,4 +154,5 @@
 			ENDCG
 		}
 	}
+	FallBack "Diffuse"
 }

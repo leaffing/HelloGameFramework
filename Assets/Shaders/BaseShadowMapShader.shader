@@ -18,13 +18,49 @@ Shader "Shadow/BaseShadowMapShader"
 		_Specular ("Specular", Color) = (1, 1, 1, 1)
 		_Gloss ("Gloss", Range(8.0, 256)) = 20
 	}
+		SubShader
+		{
+			Tags { "LightMode" = "ShadowCaster" }
+			LOD 100
 
+			Pass
+			{
+				CGPROGRAM
+				#pragma vertex vert
+				#pragma fragment frag
+
+				#include "UnityCG.cginc"
+
+				struct appdata
+				{
+					float4 vertex : POSITION;
+				};
+
+				struct v2f
+				{
+					float4 vertex : SV_POSITION;
+				};
+
+
+				v2f vert(appdata v)
+				{
+					v2f o;
+					o.vertex = UnityObjectToClipPos(v.vertex);
+					return o;
+				}
+
+				fixed4 frag(v2f i) : SV_Target
+				{
+					discard;
+					return 0;
+				}
+				ENDCG
+			}
+		}
 	SubShader
 	{
-		Tags
-		{
-			"RenderType"="Opaque" 
-		}
+		Tags{ "RenderType"="Opaque" }
+
 		LOD 100
 
 		Pass
@@ -302,5 +338,6 @@ Shader "Shadow/BaseShadowMapShader"
 		}
 	}
 
-		FallBack "Diffuse"
+	
+	FallBack "Diffuse"
 }
