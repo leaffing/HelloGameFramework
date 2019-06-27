@@ -69,15 +69,15 @@
 				return result;
 			}
 
-			//是否被遮挡
+			//是否被遮挡区域（阴影）
 			inline half IsCull(fixed4 NDCPos)
 			{
 				//从[-1,1]转换到[0,1]
 				//float3 uvpos = NDCPos * 0.5 + 0.5;
 				float depth = DecodeFloatRGBA(tex2D(_MainLightDepthTexture, NDCPos.xy));
 				//float depth = tex2D(_MainLightDepthTexture, uvpos.xy).x;
-				half result = 1- step(depth, NDCPos.z);
-				//half result = 1 - step(NDCPos.z, depth);
+				//half result = 1- step(depth, NDCPos.z);
+				half result = 1 - step(NDCPos.z, depth);
 
 				return result;
 			}
@@ -183,7 +183,7 @@
 				float3 videoUV = projectPos;
 				videoUV.y = 1 - videoUV.y;
 				fixed4 cameracolor = tex2D(_ProjectTexture, videoUV.xy);
-				
+				//shadow = iscull;
 				fixed4 insidecolor = fixed4(col*shadow + cameracolor * (1 - shadow));
 				fixed4 finnalycolor = fixed4((1 - ismain)*insidecolor + (ismain)*col);
 
